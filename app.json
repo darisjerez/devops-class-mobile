@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "DevOps Class Mobile",
+    "slug": "devops-class-mobile",
+    "scheme": "devopsclass",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "platforms": [
+      "ios",
+      "android"
+    ],
+    "newArchEnabled": false,
+    "assetBundlePatterns": [
+      "**/*"
+    ]
+  }
+}
