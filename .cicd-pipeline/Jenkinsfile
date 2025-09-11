@@ -1,0 +1,86 @@
+pipeline {
+    agent any
+    environment {
+        IMAGE_NAME = "mobile-image"
+        IMAGE_TAG = "v${BUILD_NUMBER}"
+        PORT = "8081"
+        NEXUS_DNS = "Set DNS"
+        NPM_GROUP = "dev"
+
+        // Jenkins environment variables
+        ANDROID_HOME = "/usr/lib/android-sdk"
+        ANDROID_SDK_ROOT = "/usr/lib/android-sdk"
+        PATH = "${env.PATH}:${ANDROID_HOME}/platform-tools:${ANDROID_HOME}/cmdline-tools/latest/bin:${ANDROID_HOME}/tools/bin"
+    }
+
+    stages {
+        stage('Fetch Code') {
+            steps {
+                git branch: 'Michael-stg', url: 'https://github.com/darisjerez/devops-class-mobile'
+            }
+        }
+
+        stage('Set NPM Registry') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'nexuslogin',
+                    usernameVariable: 'NPM_USER',
+                    passwordVariable: 'NPM_PASS'
+                )]) {
+                    sh '''
+                        echo "//$NEXUS_DNS:$PORT/repository/$NPM_GROUP/:_auth=$(echo -n $NPM_USER:$NPM_PASS | base64)" > ~/.npmrc
+                        echo "//$NEXUS_DNS:$PORT/repository/$NPM_GROUP/:username=$NPM_USER" >> ~/.npmrc
+                        echo "//$NEXUS_DNS:$PORT/repository/$NPM_GROUP/:always-auth=true" >> ~/.npmrc
+                        npm config set registry http://$NEXUS_DNS:$PORT/repository/$NPM_GROUP/
+                    '''
+                }
+            }
+        }
+
+        stage('Install dependencies') {
+            steps {
+                sh 'npm install --legacy-peer-deps'
+            }
+        }
+
+        stage('Run tests') {
+            steps {
+                sh 'npm run test'
+            }
+        }
+
+        stage('Build APK') {
+            steps {
+                dir('android') {
+                    sh '''
+                        chmod +x gradlew
+                        ./gradlew clean assembleRelease
+                    '''
+                }
+            }
+        }
+
+        stage('Upload Nexus Artifact') {
+            steps {
+                script {
+                    nexusArtifactUploader(
+                        nexusVersion: 'nexus3',
+                        protocol: 'http',
+                        nexusUrl: "${NEXUS_DNS}:${PORT}",
+                        groupId: 'com.babel.android',
+                        version: "${env.BUILD_NUMBER}-${new Date().format('yyyyMMddHHmmss')}",
+                        repository: 'mobile-releases',
+                        credentialsId: 'nexuslogin',
+                        artifacts: [[
+                            artifactId: 'mobileapp',
+                            classifier: '',
+                            file: 'android/app/build/outputs/apk/release/app-release.apk',
+                            type: 'apk'
+                        ]]
+                    )
+                }
+            }
+        }
+    }
+}
+
