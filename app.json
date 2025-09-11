@@ -12,6 +12,12 @@
     "newArchEnabled": false,
     "assetBundlePatterns": [
       "**/*"
-    ]
+    ],
+    "android": {
+      "package": "com.anonymous.devopsclassmobile"
+    },
+    "ios": {
+      "bundleIdentifier": "com.anonymous.devopsclassmobile"
+    }
   }
 }
